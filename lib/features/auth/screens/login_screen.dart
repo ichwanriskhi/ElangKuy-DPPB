@@ -1,6 +1,9 @@
+// lib/screens/auth/login_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../features/home/screens/home_screen.dart';
+import 'package:elangkuy/services/api_service.dart';
+import 'package:elangkuy/services/auth_service.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -17,10 +20,6 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
   String? _emailError;
   String? _passwordError;
-
-  // Static credentials
-  static const String validEmail = 'ichwanriskhi@gmail.com';
-  static const String validPassword = '123456';
 
   void _togglePasswordVisibility() {
     setState(() {
@@ -72,30 +71,77 @@ class _LoginScreenState extends State<LoginScreen> {
       _isLoading = true;
     });
 
-    // Simulate network delay
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      final result = await ApiService.login(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
 
-    setState(() {
-      _isLoading = false;
-    });
+      setState(() {
+        _isLoading = false;
+      });
 
-    final email = _emailController.text.trim();
-    final password = _passwordController.text;
+      if (result['success']) {
+        // Save token and user data
+        if (result['token'] != null) {
+          await AuthService.saveToken(result['token']);
+        }
+        if (result['user'] != null) {
+          await AuthService.saveUser(result['user']);
+        }
 
-    if (email == validEmail && password == validPassword) {
-      // Navigate to home page
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const HomePage()),
-        );
+        // Show success message
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['message']),
+              backgroundColor: Colors.green,
+            ),
+          );
+
+          // Navigate to home page
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const HomePage()),
+          );
+        }
+      } else {
+        // Handle validation errors
+        if (result['errors'] != null && result['errors'].isNotEmpty) {
+          final errors = result['errors'] as Map<String, dynamic>;
+
+          if (errors['email'] != null) {
+            setState(() {
+              _emailError = (errors['email'] as List).first;
+            });
+          }
+
+          if (errors['password'] != null) {
+            setState(() {
+              _passwordError = (errors['password'] as List).first;
+            });
+          }
+        }
+
+        // Show error message
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['message']),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
-    } else {
-      // Show error message
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Email atau password salah'),
+            content: Text('Terjadi kesalahan saat login'),
             backgroundColor: Colors.red,
           ),
         );

@@ -12,6 +12,9 @@ dependencies:
   # Tambahkan dependencies yang mungkin diperlukan
   cupertino_icons: ^1.0.6
   google_fonts: ^6.1.0  # Optional: Alternatif untuk download manual font Inter
+  shared_preferences: ^2.2.2  # Tambahkan baris ini
+  http: ^1.4.0
+  connectivity_plus: ^4.0.2
 
 dev_dependencies:
   flutter_test:

@@ -5,6 +5,8 @@ class ProductDetailScreen extends StatefulWidget {
   final String image;
   final String price;
   final String condition;
+  final String barangId;
+
 
   const ProductDetailScreen({
     super.key,
@@ -12,6 +14,7 @@ class ProductDetailScreen extends StatefulWidget {
     required this.image,
     required this.price,
     required this.condition,
+    required this.barangId,
   });
 
   @override
@@ -826,6 +829,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           MaterialPageRoute(
             builder:
                 (context) => ProductDetailScreen(
+                  barangId: '', //
                   title: title,
                   image: image,
                   price: price,
