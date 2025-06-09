@@ -1,6 +1,8 @@
+// lib/screens/auth/register_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../features/home/screens/home_screen.dart';
+import 'package:elangkuy/services/api_service.dart';
 import 'login_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -11,12 +13,14 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
+  final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
   bool _isLoading = false;
+  String? _nameError;
   String? _emailError;
   String? _passwordError;
   String? _confirmPasswordError;
@@ -38,10 +42,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
     
     // Reset error messages
     setState(() {
+      _nameError = null;
       _emailError = null;
       _passwordError = null;
       _confirmPasswordError = null;
     });
+
+    // Validate name (optional, tapi kita tambahkan untuk validasi lokal)
+    if (_nameController.text.isEmpty) {
+      setState(() {
+        _nameError = 'Nama tidak boleh kosong';
+      });
+      isValid = false;
+    }
 
     // Validate email
     if (_emailController.text.isEmpty) {
@@ -94,32 +107,86 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _isLoading = true;
     });
 
-    // Simulate network delay
-    await Future.delayed(const Duration(seconds: 1));
-
-    setState(() {
-      _isLoading = false;
-    });
-
-    // Registration success
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Registrasi berhasil, silahkan masuk'),
-          backgroundColor: Colors.green,
-        ),
+    try {
+      final result = await ApiService.register(
+        nama: _nameController.text.trim(),
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+        passwordConfirmation: _confirmPasswordController.text,
       );
-  
-      // Navigate to login page
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const LoginScreen()),
-      );
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      if (result['success']) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['message']),
+              backgroundColor: Colors.green,
+            ),
+          );
+    
+          // Navigate to login page
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const LoginScreen()),
+          );
+        }
+      } else {
+        // Handle validation errors from server
+        if (result['errors'] != null && result['errors'].isNotEmpty) {
+          final errors = result['errors'] as Map<String, dynamic>;
+          
+          if (errors['name'] != null) {
+            setState(() {
+              _nameError = (errors['name'] as List).first;
+            });
+          }
+          
+          if (errors['email'] != null) {
+            setState(() {
+              _emailError = (errors['email'] as List).first;
+            });
+          }
+          
+          if (errors['password'] != null) {
+            setState(() {
+              _passwordError = (errors['password'] as List).first;
+            });
+          }
+        }
+
+        // Show error message
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['message']),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Terjadi kesalahan saat registrasi'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
   @override
   void dispose() {
+    _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
@@ -186,6 +253,35 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
+
+                // Name Field
+                const Text(
+                  'Nama Lengkap',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                TextField(
+                  controller: _nameController,
+                  keyboardType: TextInputType.name,
+                  style: const TextStyle(fontSize: 14),
+                  decoration: InputDecoration(
+                    hintText: 'Masukkan nama lengkap...',
+                    hintStyle: const TextStyle(fontSize: 13),
+                    errorText: _nameError,
+                    errorStyle: const TextStyle(fontSize: 12),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide.none,
+                    ),
+                    filled: true,
+                    fillColor: const Color(0xFFF5F5F5),
+                  ),
+                ),
+                const SizedBox(height: 16),
                 
                 // Email Field
                 const Text(
@@ -270,7 +366,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 const SizedBox(height: 4),
                 TextField(
                   controller: _confirmPasswordController,
-                  obscureText: !_isConfirmPasswordVisible,
+                  obscureText: !_isConfirmPasswordVisible,  
                   style: const TextStyle(fontSize: 14),
                   decoration: InputDecoration(
                     hintText: 'Masukkan konfirmasi kata sandi...',
@@ -300,7 +396,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 16),
                 
                 // Forgot Password
                 Align(
