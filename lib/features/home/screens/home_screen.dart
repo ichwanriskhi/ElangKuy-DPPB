@@ -7,6 +7,7 @@ import 'history_screen.dart';
 import 'profile_screen.dart';
 import 'notification_screen.dart';
 import 'package:elangkuy/services/auth_service.dart';
+import 'package:elangkuy/services/api_service.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -159,17 +160,16 @@ class Barang {
     this.kategori,
   });
 
-  factory Barang.fromJson(Map<String, dynamic> json) {
-    return Barang(
-      id: json['id_barang'].toString(),
-      title: json['nama_barang'],
-      condition: json['kondisi'] == 'Baru' ? 'Baru' : 'Bekas',
-      price:
-          'Rp. ${json['harga_awal'].toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
-      image: 'http://192.168.0.101:8000/storage/${json['foto_utama']}',
-      kategori: json['kategori']?['nama_kategori'],
-    );
-  }
+factory Barang.fromJson(Map<String, dynamic> json) {
+  return Barang(
+    id: json['id_barang'].toString(),
+    title: json['nama_barang'],
+    condition: json['kondisi'] == 'Baru' ? 'Baru' : 'Bekas',
+    price: 'Rp. ${json['harga_awal'].toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
+    image: '${ApiService.imageBaseUrl}${json['foto_utama']}',
+    kategori: json['kategori']?['nama_kategori'],
+  );
+}
 }
 
 class HomeContent extends StatefulWidget {
@@ -190,35 +190,35 @@ class _HomeContentState extends State<HomeContent> {
   }
 
   Future<List<Barang>> _fetchBarang() async {
-    try {
-      final token = await AuthService.getToken();
-      print('Token saat fetch barang: $token'); // Add this line
-      if (token == null) throw Exception('Token tidak tersedia');
+  try {
+    final token = await AuthService.getToken();
+    print('Token saat fetch barang: $token');
+    if (token == null) throw Exception('Token tidak tersedia');
 
-      final response = await http.get(
-        Uri.parse('http://192.168.0.101:8000/api/barang/approved-pembeli'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      );
+    final response = await http.get(
+      Uri.parse('${ApiService.baseUrl}/barang/approved-pembeli'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
 
-      print('Response status: ${response.statusCode}'); // Add this line
-      print('Response body: ${response.body}'); // Add this line
+    print('Response status: ${response.statusCode}');
+    print('Response body: ${response.body}');
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final List<dynamic> items = data['data']['items'];
-        return items.map((item) => Barang.fromJson(item)).toList();
-      } else {
-        throw Exception('Gagal memuat data: ${response.statusCode}');
-      }
-    } catch (e) {
-      print('Error in _fetchBarang: $e'); // Add this line
-      throw Exception('Terjadi kesalahan: $e');
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final List<dynamic> items = data['data']['items'];
+      return items.map((item) => Barang.fromJson(item)).toList();
+    } else {
+      throw Exception('Gagal memuat data: ${response.statusCode}');
     }
+  } catch (e) {
+    print('Error in _fetchBarang: $e');
+    throw Exception('Terjadi kesalahan: $e');
   }
+}
 
   Future<void> _refreshData() async {
     setState(() {
@@ -536,10 +536,6 @@ class _HomeContentState extends State<HomeContent> {
           MaterialPageRoute(
             builder:
                 (context) => ProductDetailScreen(
-                  title: barang.title,
-                  image: barang.image,
-                  price: barang.price,
-                  condition: barang.condition,
                   barangId: barang.id,
                 ),
           ),
